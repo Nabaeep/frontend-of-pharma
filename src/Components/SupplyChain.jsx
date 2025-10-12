@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -19,18 +20,19 @@ const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
   const fetchOrders = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/drug", {
+      const { data } = await axios.get(`${backendUrl}/api/drug`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
-      if (res.ok) setOrders(data);
-      else alert(data.message || "Failed to fetch orders");
+      setOrders(data);
     } catch (err) {
       console.error("Error fetching orders:", err);
-      alert("Error connecting to server");
+      alert(err.response?.data?.message || "Error connecting to server");
     } finally {
       setLoading(false);
     }
@@ -41,25 +43,23 @@ const SupplyChain = () => {
   }, []);
 
   const markAsDelivered = async (id) => {
-    const confirm = window.confirm("Mark this drug as delivered?");
-    if (!confirm) return;
+    const confirmAction = window.confirm("Mark this drug as delivered?");
+    if (!confirmAction) return;
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/drug/${id}/deliver`, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert("Drug marked as delivered!");
-        fetchOrders(); // refresh table
-      } else {
-        alert(data.message || "Failed to mark as delivered");
-      }
+      await axios.put(
+        `${backendUrl}/api/drug/${id}/deliver`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      alert("Drug marked as delivered!");
+      fetchOrders(); // Refresh table
     } catch (err) {
       console.error("Error delivering drug:", err);
-      alert("Error connecting to server");
+      alert(err.response?.data?.message || "Error connecting to server");
     }
   };
 
@@ -87,10 +87,7 @@ const SupplyChain = () => {
         </thead>
         <tbody>
           {orders.map((order, idx) => (
-            <tr
-              key={idx}
-              className="border-b border-gray-700 hover:bg-gray-800"
-            >
+            <tr key={idx} className="border-b border-gray-700 hover:bg-gray-800">
               <td className="px-4 py-2">{order.name}</td>
               <td className="px-4 py-2">{order.batch_no}</td>
               <td className="px-4 py-2">{order.quantity.toLocaleString()}</td>

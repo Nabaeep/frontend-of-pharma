@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function SignIn({ setIsLoggedIn }) {
   const navigate = useNavigate();
 
-  // ✅ Initialize based on token
-  const [isSignIn, setIsSignIn] = useState(() => {
-    return !!localStorage.getItem("token");
-  });
+  // ✅ Vite uses import.meta.env and requires VITE_ prefix
+  const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+  const [isSignIn, setIsSignIn] = useState(() => !!localStorage.getItem("token"));
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,24 +17,13 @@ export default function SignIn({ setIsLoggedIn }) {
   const handleSignIn = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://localhost:5000/api/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.message || "Signin failed");
-        return;
-      }
-
+      const { data } = await axios.post(`${backendUrl}/api/users/login`, { email, password });
       localStorage.setItem("token", data.token);
       setIsLoggedIn(true);
       navigate("/home");
     } catch (err) {
-      console.error(err);
-      alert("Error connecting to server");
+      console.error("Sign-in error:", err);
+      alert(err.response?.data?.message || "⚠️ Error connecting to server");
     }
   };
 
@@ -42,36 +31,28 @@ export default function SignIn({ setIsLoggedIn }) {
   const handleSignUp = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://localhost:5000/api/users/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.message || "Signup failed");
-        return;
-      }
-
+      const { data } = await axios.post(`${backendUrl}/api/users/signup`, { name, email, password });
       alert("Signup successful!");
       setName("");
       setEmail("");
       setPassword("");
-      setIsSignIn(true); // switch to Sign In
+      setIsSignIn(true);
     } catch (err) {
-      console.error(err);
-      alert("Error connecting to server");
+      console.error("Sign-up error:", err);
+      alert(err.response?.data?.message || "⚠️ Error connecting to server");
     }
   };
 
   return (
     <div className="relative w-screen h-screen flex items-center justify-center bg-gray-100">
+      {/* ---------- Sign In / Sign Up JSX Panels ---------- */}
       <div className="relative w-full max-w-5xl h-[600px] shadow-2xl rounded-2xl overflow-hidden flex flex-col md:flex-row">
-        {/* ---------- Left Panel ---------- */}
+        {/* Left Panel */}
         <div
           className={`absolute inset-0 md:static md:w-1/2 h-full flex flex-col justify-center items-center p-10 transition-all duration-700 ease-in-out ${
-            isSignIn ? "translate-x-full md:translate-x-0 bg-white text-gray-900" : "bg-gray-900 text-white"
+            isSignIn
+              ? "translate-x-full md:translate-x-0 bg-white text-gray-900"
+              : "bg-gray-900 text-white"
           }`}
         >
           {!isSignIn ? (
@@ -120,10 +101,12 @@ export default function SignIn({ setIsLoggedIn }) {
           )}
         </div>
 
-        {/* ---------- Right Panel ---------- */}
+        {/* Right Panel */}
         <div
           className={`absolute inset-0 md:static md:w-1/2 h-full flex flex-col justify-center items-center p-10 transition-all duration-700 ease-in-out ${
-            isSignIn ? "bg-gray-900 text-white" : "translate-x-full md:translate-x-0 bg-white text-gray-900"
+            isSignIn
+              ? "bg-gray-900 text-white"
+              : "translate-x-full md:translate-x-0 bg-white text-gray-900"
           }`}
         >
           {!isSignIn ? (

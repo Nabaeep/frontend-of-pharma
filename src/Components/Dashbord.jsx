@@ -1,29 +1,38 @@
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 import { Clock, Truck, CheckCircle, Package, Users } from "lucide-react";
+
+const API_URL = import.meta.env.VITE_API_URL || "https://bakendofpharma.onrender.com";
 
 export default function Dashboard() {
   const [drugs, setDrugs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [suppliers, setSuppliers] = useState(0);
 
   useEffect(() => {
-    
-    const fetchDrugs = async () => {
+    const fetchData = async () => {
+      const token = localStorage.getItem("token");
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:5000/api/drug", {
+        // Fetch drugs
+        const { data: drugData } = await axios.get(`${API_URL}/api/drug`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const data = await res.json();
-        if (res.ok) setDrugs(data);
-        else alert(data.message || "Failed to fetch drugs");
+        setDrugs(drugData);
+
+        // Fetch suppliers
+        const { data: supplierData } = await axios.get(`${API_URL}/api/supplier/my`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSuppliers(supplierData.length || 0);
       } catch (err) {
-        console.error("Error fetching drugs:", err);
-        alert("Error connecting to server");
+        console.error("Error fetching:", err);
+        alert(err.response?.data?.message || "Error connecting to server");
       } finally {
         setLoading(false);
       }
     };
-    fetchDrugs();
+
+    fetchData();
   }, []);
 
   // Transform drugs into activity log
@@ -34,7 +43,7 @@ export default function Dashboard() {
         activities.push({
           id: `${drug._id}-ordered`,
           action: `Ordered: ${drug.name} (${drug.batch_no})`,
-          timestamp: new Date(drug.orderedAt).toLocaleString(),
+          timestamp: new Date(drug.orderedAt).toISOString(),
           status: "info",
           user: drug.supplier_id?.name || "Supplier",
         });
@@ -42,7 +51,7 @@ export default function Dashboard() {
         activities.push({
           id: `${drug._id}-delivered`,
           action: `Delivered: ${drug.name} (${drug.batch_no})`,
-          timestamp: new Date(drug.deliveredAt).toLocaleString(),
+          timestamp: new Date(drug.deliveredAt).toISOString(),
           status: "success",
           user: drug.supplier_id?.name || "Supplier",
         });
@@ -50,7 +59,7 @@ export default function Dashboard() {
         activities.push({
           id: `${drug._id}-pharmacy`,
           action: `Sent to Pharmacy: ${drug.name} (${drug.batch_no}), Qty: ${drug.lastSentToPharmacy.quantity}`,
-          timestamp: new Date(drug.lastSentToPharmacy.sentAt).toLocaleString(),
+          timestamp: new Date(drug.lastSentToPharmacy.sentAt).toISOString(),
           status: "warning",
           user: `Pharmacy ID: ${drug.lastSentToPharmacy.pharmacyId}`,
         });
@@ -60,7 +69,7 @@ export default function Dashboard() {
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   const metrics = [
-    { label: "Suppliers", value: 156, icon: Users, trend: "+12%" },
+    { label: "Suppliers", value: suppliers, icon: Users, trend: "+12%" },
     { label: "Total Batches", value: drugs.length, icon: Package, trend: "+8%" },
     {
       label: "Active Shipments",
@@ -103,7 +112,7 @@ export default function Dashboard() {
                   <div className="flex-1">
                     <p className="text-sm">{activity.action}</p>
                     <p className="text-xs text-gray-400">
-                      {activity.user} • {activity.timestamp}
+                      {activity.user} • {new Date(activity.timestamp).toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -134,24 +143,22 @@ export default function Dashboard() {
               <Truck className="h-5 w-5" /> Supply Chain Overview
             </h3>
             <div className="space-y-4">
-              {[
-                { label: "Manufacturing", value: 94 },
-                { label: "Distribution", value: 87 },
-                { label: "Retail", value: 91 },
-              ].map((item, i) => (
-                <div key={i}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>{item.label}</span>
-                    <span>{item.value}%</span>
+              {[{ label: "Manufacturing", value: 94 }, { label: "Distribution", value: 87 }, { label: "Retail", value: 91 }].map(
+                (item, i) => (
+                  <div key={i}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>{item.label}</span>
+                      <span>{item.value}%</span>
+                    </div>
+                    <div className="w-full bg-gray-700 h-2 rounded-full">
+                      <div
+                        className="bg-blue-500 h-2 rounded-full"
+                        style={{ width: `${item.value}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-700 h-2 rounded-full">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full"
-                      style={{ width: `${item.value}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
+                )
+              )}
               <div className="mt-2 text-center">
                 <span className="bg-gray-800 text-green-400 px-3 py-1 rounded-full text-sm">
                   Overall Health: Excellent

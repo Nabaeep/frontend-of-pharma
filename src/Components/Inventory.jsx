@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -35,34 +36,29 @@ const DrugTable = () => {
   const [sendQty, setSendQty] = useState("");
   const [showModal, setShowModal] = useState(false);
 
-  // Fetch drugs (demo here, or use real API)
-useEffect(() => {
-  const fetchDrugs = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/drug", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-      if (res.ok) {
-        // ✅ Filter only delivered items
+  // Fetch drugs (only delivered ones)
+  useEffect(() => {
+    const fetchDrugs = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const { data } = await axios.get(`${API_URL}/api/drug`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
         const deliveredDrugs = data.filter((drug) => drug.status === "Delivered");
         setDrugs(deliveredDrugs);
-      } else {
-        alert(data.message || "Failed to fetch drugs");
+      } catch (err) {
+        console.error("Error fetching drugs:", err);
+        alert("Error connecting to server");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Error fetching drugs:", err);
-      alert("Error connecting to server");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  fetchDrugs();
-}, []);
-
+    fetchDrugs();
+  }, [API_URL]);
 
   const handleEditClick = (drug) => {
     setSelectedDrug(drug);
@@ -84,40 +80,38 @@ useEffect(() => {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/drug/send", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+      await axios.put(
+        `${API_URL}/api/drug/send`,
+        {
           drugId: selectedDrug._id,
           quantity: qty,
           pharmacyId: selectedPharmacy,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert(`Sent to ${demoPharmacies.find(p => p._id === selectedPharmacy)?.name}`);
-        setDrugs((prev) =>
-          prev.map((d) =>
-            d._id === selectedDrug._id
-              ? { ...d, quantity: d.quantity - qty }
-              : d
-          )
-        );
-        setShowModal(false);
-      } else {
-        alert(data.message || "Failed to send drug");
-      }
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      alert(
+        `Sent ${qty} units to ${
+          demoPharmacies.find((p) => p._id === selectedPharmacy)?.name
+        } successfully`
+      );
+
+      setDrugs((prev) =>
+        prev.map((d) =>
+          d._id === selectedDrug._id ? { ...d, quantity: d.quantity - qty } : d
+        )
+      );
+      setShowModal(false);
     } catch (err) {
-      console.error(err);
-      alert("Server error");
+      console.error("Error sending drug:", err);
+      alert(err.response?.data?.message || "Server error");
     }
   };
 
-  if (loading) return <p className="text-white text-center mt-10">Loading...</p>;
-  if (drugs.length === 0) return <p className="text-white text-center mt-10">No drugs found</p>;
+  if (loading)
+    return <p className="text-white text-center mt-10">Loading...</p>;
+  if (drugs.length === 0)
+    return <p className="text-white text-center mt-10">No drugs found</p>;
 
   return (
     <div className="p-4 border border-gray-700 rounded-lg">
@@ -143,9 +137,13 @@ useEffect(() => {
                 <td className="px-4 py-2">{drug.batch_no}</td>
                 <td className="px-4 py-2">{drug.supplier_id?.name || "N/A"}</td>
                 <td className="px-4 py-2">{drug.quantity}</td>
-                <td className="px-4 py-2">{new Date(drug.expiry_date).toLocaleDateString()}</td>
                 <td className="px-4 py-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(status)}`}>
+                  {new Date(drug.expiry_date).toLocaleDateString()}
+                </td>
+                <td className="px-4 py-2">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(status)}`}
+                  >
                     {status}
                   </span>
                 </td>
@@ -180,7 +178,9 @@ useEffect(() => {
             >
               <option value="">-- Select Pharmacy --</option>
               {demoPharmacies.map((p) => (
-                <option key={p._id} value={p._id}>{p.name}</option>
+                <option key={p._id} value={p._id}>
+                  {p.name}
+                </option>
               ))}
             </select>
 

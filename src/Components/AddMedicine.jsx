@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
+
+const API_URL = import.meta.env.VITE_API_URL || "https://bakendofpharma.onrender.com";
 
 const AddMedicine = () => {
   const [formData, setFormData] = useState({
@@ -14,116 +17,73 @@ const AddMedicine = () => {
   const [warehouses, setWarehouses] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ Fetch suppliers
+  const token = localStorage.getItem("token");
+  if (!token) alert("Please log in first!");
+
+  // Fetch suppliers
   useEffect(() => {
     const fetchSuppliers = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        alert("Please log in first!");
-        return;
-      }
-
       try {
-        const res = await fetch("http://localhost:5000/api/supplier/my", {
+        const { data } = await axios.get(`${API_URL}/api/supplier/my`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (res.status === 401) {
-          alert("Unauthorized. Please log in again.");
-          return;
-        }
-
-        const data = await res.json();
-        setSuppliers(data.suppliers || []);
+        setSuppliers(data.suppliers || data || []);
       } catch (err) {
         console.error("Error fetching suppliers:", err);
-        alert("Failed to fetch suppliers");
+        alert(err.response?.data?.message || "Failed to fetch suppliers");
       }
     };
-
-    fetchSuppliers();
+    if (token) fetchSuppliers();
   }, []);
 
-  // ✅ Fetch warehouses
+  // Fetch warehouses
   useEffect(() => {
     const fetchWarehouses = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-
       try {
-        const res = await fetch("http://localhost:5000/api/warehouse", {
+        const { data } = await axios.get(`${API_URL}/api/warehouse`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (res.status === 401) {
-          alert("Unauthorized. Please log in again.");
-          return;
-        }
-
-        const data = await res.json();
-        setWarehouses(data.warehouses || []);
+        setWarehouses(data.warehouses || data || []);
       } catch (err) {
         console.error("Error fetching warehouses:", err);
-        alert("Failed to fetch warehouses");
+        alert(err.response?.data?.message || "Failed to fetch warehouses");
       }
     };
-
-    fetchWarehouses();
+    if (token) fetchWarehouses();
   }, []);
 
-  // ✅ Handle form input
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // ✅ Submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Please log in first!");
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Map warehouse_id to warehouse name
-      const warehouse = warehouses.find(w => w._id === formData.warehouse_id);
+      const warehouse = warehouses.find((w) => w._id === formData.warehouse_id);
       const body = {
-        name: formData.name,
-        batch_no: formData.batch_no,
-        expiry_date: formData.expiry_date,
+        ...formData,
         quantity: Number(formData.quantity),
-        supplier_id: formData.supplier_id,
         warehouse_location: warehouse?.name || "",
       };
 
-      const res = await fetch("http://localhost:5000/api/drug/add", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
+      const { data } = await axios.post(`${API_URL}/api/drug/add`, body, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      const data = await res.json();
-      if (res.ok) {
-        alert("Drug added successfully!");
-        setFormData({
-          name: "",
-          batch_no: "",
-          expiry_date: "",
-          quantity: "",
-          supplier_id: "",
-          warehouse_id: "",
-        });
-      } else {
-        alert(data.message || "Failed to add drug");
-      }
+      alert("Drug added successfully!");
+      setFormData({
+        name: "",
+        batch_no: "",
+        expiry_date: "",
+        quantity: "",
+        supplier_id: "",
+        warehouse_id: "",
+      });
     } catch (err) {
-      console.error("Error:", err);
-      alert("Failed to connect to server");
+      console.error("Error adding drug:", err);
+      alert(err.response?.data?.message || "Failed to add drug");
     } finally {
       setLoading(false);
     }
@@ -139,7 +99,6 @@ const AddMedicine = () => {
           Add <span className="text-blue-400">Drug</span>
         </h1>
 
-        {/* Drug Name */}
         <input
           type="text"
           name="name"
@@ -150,7 +109,6 @@ const AddMedicine = () => {
           required
         />
 
-        {/* Batch No */}
         <input
           type="text"
           name="batch_no"
@@ -161,7 +119,6 @@ const AddMedicine = () => {
           required
         />
 
-        {/* Supplier */}
         <select
           name="supplier_id"
           value={formData.supplier_id}
@@ -177,7 +134,6 @@ const AddMedicine = () => {
           ))}
         </select>
 
-        {/* Warehouse */}
         <select
           name="warehouse_id"
           value={formData.warehouse_id}
@@ -193,7 +149,6 @@ const AddMedicine = () => {
           ))}
         </select>
 
-        {/* Expiry Date */}
         <input
           type="date"
           name="expiry_date"
@@ -203,7 +158,6 @@ const AddMedicine = () => {
           required
         />
 
-        {/* Quantity */}
         <input
           type="number"
           name="quantity"

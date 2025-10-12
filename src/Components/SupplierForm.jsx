@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import axios from "axios";
 
 const SupplierForm = () => {
   const [formData, setFormData] = useState({
@@ -9,12 +10,20 @@ const SupplierForm = () => {
   });
   const [loading, setLoading] = useState(false);
 
+  const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // ✅ Check all fields before submitting
+    if (!formData.name || !formData.contact_info || !formData.phoneno || !formData.email) {
+      alert("⚠️ All fields are required!");
+      return;
+    }
 
     const token = localStorage.getItem("token");
     if (!token) {
@@ -25,25 +34,18 @@ const SupplierForm = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/api/supplier/add", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        alert("Supplier added successfully!");
-        setFormData({ name: "", contact_info: "", phoneno: "", email: "" });
-      } else {
-        alert(data.message || "Something went wrong");
-      }
+      const { data } = await axios.post(
+        `${backendUrl}/api/supplier/add`,
+        formData,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      alert("✅ Supplier added successfully!");
+      setFormData({ name: "", contact_info: "", phoneno: "", email: "" });
     } catch (err) {
-      console.error("Error:", err);
-      alert("Failed to add supplier");
+      console.error("Error adding supplier:", err);
+      alert(err.response?.data?.message || "Failed to add supplier");
     } finally {
       setLoading(false);
     }
@@ -64,7 +66,7 @@ const SupplierForm = () => {
           name="name"
           value={formData.name}
           onChange={handleChange}
-          placeholder="Enter Supplier Name"
+          placeholder="Enter Supplier Name *"
           className="w-full p-3 mb-6 bg-[#0d1117] border-b border-gray-600 focus:outline-none focus:border-blue-500"
           required
         />
@@ -74,8 +76,9 @@ const SupplierForm = () => {
           name="contact_info"
           value={formData.contact_info}
           onChange={handleChange}
-          placeholder="Enter Contact Person"
+          placeholder="Enter Contact Person *"
           className="w-full p-3 mb-6 bg-[#0d1117] border-b border-gray-600 focus:outline-none focus:border-blue-500"
+          required
         />
 
         <input
@@ -83,7 +86,7 @@ const SupplierForm = () => {
           name="phoneno"
           value={formData.phoneno}
           onChange={handleChange}
-          placeholder="Enter Phone Number"
+          placeholder="Enter Phone Number *"
           className="w-full p-3 mb-6 bg-[#0d1117] border-b border-gray-600 focus:outline-none focus:border-blue-500"
           required
         />
@@ -93,7 +96,7 @@ const SupplierForm = () => {
           name="email"
           value={formData.email}
           onChange={handleChange}
-          placeholder="Enter Email"
+          placeholder="Enter Email *"
           className="w-full p-3 mb-10 bg-[#0d1117] border-b border-gray-600 focus:outline-none focus:border-blue-500"
           required
         />
