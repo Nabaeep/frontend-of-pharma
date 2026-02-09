@@ -1,35 +1,66 @@
-import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import SignIn from "./Pages/signIn";
-import HomePage from "./Pages/Home";
-import Navbar from "./Components/Navbar";
-import AddSupplier from "./Pages/AddSupplier";
-import AddMed from "./Pages/AddMed";
+import { useState, useEffect } from "react";
+import "./index.css";
+
+import AuctionPage from "./pages/AuctionPage";
+import TeamsPage from "./Pages/TeamsPage";
+import LotteryPage from "./Pages/LotteryPage"; // <-- new
+import { teamsData } from "./data/data";
 
 function App() {
-  // ✅ Initialize from localStorage
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return !!localStorage.getItem("token");
+
+  // LOAD FROM LOCAL STORAGE
+  const [teams, setTeams] = useState(() => {
+    const saved = localStorage.getItem("teams");
+    return saved ? JSON.parse(saved) : teamsData;
   });
 
-  const handleSignOut = () => {
-    localStorage.removeItem("token");
-    setIsLoggedIn(false);
-  };
+  // SAVE TO LOCAL STORAGE
+  useEffect(() => {
+    localStorage.setItem("teams", JSON.stringify(teams));
+  }, [teams]);
+
+  const [page, setPage] = useState("auction");
 
   return (
-    <Router>
-      <Navbar isLoggedIn={isLoggedIn} onSignOut={handleSignOut} />
-      <Routes>
-        <Route path="/" element={<SignIn setIsLoggedIn={setIsLoggedIn} />} />
-        <Route path="/home" element={<HomePage />} />
-        <Route path="/add-supplier" element={<AddSupplier />}
+    <div className="min-h-screen bg-[#2b2928] text-white">
 
-       
-        />
-         <Route path="/add-medicine" element={<AddMed />} />
-      </Routes>
-    </Router>
+      {/* TOP NAV */}
+      <div className="flex gap-4 p-4 bg-zinc-900">
+        <button
+          onClick={() => setPage("auction")}
+          className="px-4 py-2 bg-red-600 rounded"
+        >
+          Auction
+        </button>
+
+        <button
+          onClick={() => setPage("teams")}
+          className="px-4 py-2 bg-blue-600 rounded"
+        >
+          Teams
+        </button>
+
+        <button
+          onClick={() => setPage("lottery")}
+          className="px-4 py-2 bg-green-600 rounded"
+        >
+          Lottery
+        </button>
+      </div>
+
+      {/* PAGE CONTENT */}
+      {page === "auction" && (
+        <AuctionPage teams={teams} setTeams={setTeams} />
+      )}
+
+      {page === "teams" && (
+        <TeamsPage teams={teams} />
+      )}
+
+      {page === "lottery" && (
+        <LotteryPage teams={teams} setTeams={setTeams} />
+      )}
+    </div>
   );
 }
 
